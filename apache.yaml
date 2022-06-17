@@ -1,0 +1,78 @@
+---
+- hosts: ubuntu
+  become: true
+  tasks:
+    - name: Install  Apache
+      apt: name=apache2 update_cache=yes state=present
+
+    - name: restart apache2
+      service: name=apache2 state=restarted
+
+    - name: enabled mod_rewrite
+      apache2_module: name=rewrite state=present
+
+    - name: apache2 listen on port 8082
+      lineinfile: dest=/etc/apache2/ports.conf regexp="^Listen 80" line="Listen 8082" state=present
+      notify:
+        - restart apache2
+
+    - name: apache2 virtualhost on port 8082
+      lineinfile: dest=/etc/apache2/sites-available/000-default.conf regexp="^<VirtualHost \*:80>" line="<VirtualHost *:8082>" state=present
+      notify:
+        - restart apache2
+
+    - name: create virtual host site1 file
+      copy: src=site1.conf dest=/etc/apache2/sites-available/site1.conf
+
+    - name: a2ensite site1
+      command: a2ensite site1.conf
+      args:
+        creates: /etc/apache2/sites-enabled/site1.conf
+      notify:
+        - restart apache2
+
+    - name: create virtual host site2 file
+      copy: src=site2.conf dest=/etc/apache2/sites-available/site2.conf
+
+    - name: a2ensite site2
+      command: a2ensite site2.conf
+      args:
+        creates: /etc/apache2/sites-enabled/site2.conf
+      notify:
+        - restart apache2
+
+    - name: Creates directory site1
+      file:
+        path: /var/www/site1
+        state: directory
+
+    - name: Creates directory site2
+      file:
+        path: /var/www/site2
+        state: directory
+
+    - name: create index file for site1
+      copy: src=site1.html dest=/var/www/site1
+      notify:
+        - restart apache2
+
+    - name: create index file for site2 
+      copy: src=site2.html dest=/var/www/site2
+      notify:
+        - restart apache2
+
+    - name: add  Listen port in ports.conf
+      lineinfile:
+        state: present
+        insertafter: EOF
+        dest: /etc/apache2/ports.conf
+        line: "{{ item }}"
+      with_items:
+       - Listen 8083
+       - Listen 8084
+      notify:
+        - restart apache2
+
+  handlers:
+    - name: restart apache2
+      service: name=apache2 state=restarted

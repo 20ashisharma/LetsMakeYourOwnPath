@@ -1,0 +1,15 @@
+---
+- name: This sets up nginx webserver
+  hosts: redhat
+  become: true
+
+  tasks:
+  - name: Install nginx packages 
+    yum:
+      name: nginx
+      state: present
+  - name: ensure nginx is running
+    service:
+      name: nginx 
+      state: started
+
